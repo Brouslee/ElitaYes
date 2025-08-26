@@ -1,0 +1,67 @@
+{
+  "bot": {
+    "starting": "Starting bot...",
+    "started": "Bot started successfully!",
+    "stopping": "Stopping bot...",
+    "stopped": "Bot stopped",
+    "error": "Error occurred: %1",
+    "restart": "Restarting bot...",
+    "update": "Updating bot...",
+    "backup": "Creating backup..."
+  },
+  "commands": {
+    "notFound": "Command '%1' not found",
+    "error": "Command execution error: %1",
+    "success": "Command executed successfully",
+    "cooldown": "Please wait %1 seconds before using this command again",
+    "noPermission": "You don't have permission to use this command",
+    "adminOnly": "This command is for developers only"
+  },
+  "instagram": {
+    "loginRequired": "Login required first",
+    "loginSuccess": "Login successful",
+    "loginFailed": "Login failed: %1",
+    "profileNotFound": "Profile not found",
+    "profilePrivate": "Profile is private",
+    "actionBlocked": "This action was blocked by Instagram",
+    "rateLimited": "Rate limit exceeded, please wait",
+    "followSuccess": "Successfully followed %1",
+    "unfollowSuccess": "Successfully unfollowed %1",
+    "likeSuccess": "Successfully liked post",
+    "commentSuccess": "Successfully commented",
+    "dmSent": "Message sent"
+  },
+  "database": {
+    "connected": "Connected to database",
+    "error": "Database error: %1",
+    "userCreated": "New user created",
+    "userUpdated": "User data updated",
+    "backupCreated": "Backup created",
+    "backupRestored": "Backup restored"
+  },
+  "security": {
+    "accessDenied": "Access denied",
+    "rateLimitExceeded": "Rate limit exceeded",
+    "invalidInput": "Invalid input",
+    "ipBlocked": "IP address blocked",
+    "unauthorized": "Unauthorized"
+  },
+  "dashboard": {
+    "title": "Bot Dashboard",
+    "login": "Login",
+    "logout": "Logout",
+    "stats": "Statistics",
+    "users": "Users",
+    "settings": "Settings",
+    "logs": "Logs",
+    "commands": "Commands"
+  },
+  "errors": {
+    "unknown": "Unknown error",
+    "networkError": "Network error",
+    "timeoutError": "Timeout error",
+    "parseError": "Parse error",
+    "fileNotFound": "File not found",
+    "accessDenied": "Access denied"
+  }
+}

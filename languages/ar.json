@@ -1,0 +1,67 @@
+{
+  "bot": {
+    "starting": "بدء تشغيل البوت...",
+    "started": "تم تشغيل البوت بنجاح!",
+    "stopping": "إيقاف البوت...",
+    "stopped": "تم إيقاف البوت",
+    "error": "حدث خطأ: %1",
+    "restart": "إعادة تشغيل البوت...",
+    "update": "تحديث البوت...",
+    "backup": "إنشاء نسخة احتياطية..."
+  },
+  "commands": {
+    "notFound": "الأمر '%1' غير موجود",
+    "error": "خطأ في تنفيذ الأمر: %1",
+    "success": "تم تنفيذ الأمر بنجاح",
+    "cooldown": "يجب الانتظار %1 ثانية قبل استخدام هذا الأمر مرة أخرى",
+    "noPermission": "ليس لديك صلاحية لاستخدام هذا الأمر",
+    "adminOnly": "هذا الأمر متاح للمطورين فقط"
+  },
+  "instagram": {
+    "loginRequired": "يجب تسجيل الدخول أولاً",
+    "loginSuccess": "تم تسجيل الدخول بنجاح",
+    "loginFailed": "فشل في تسجيل الدخول: %1",
+    "profileNotFound": "الملف الشخصي غير موجود",
+    "profilePrivate": "الملف الشخصي خاص",
+    "actionBlocked": "تم حظر هذا الإجراء من Instagram",
+    "rateLimited": "تم تجاوز الحد المسموح، يرجى الانتظار",
+    "followSuccess": "تم متابعة %1 بنجاح",
+    "unfollowSuccess": "تم إلغاء متابعة %1 بنجاح",
+    "likeSuccess": "تم إعجاب بالمنشور",
+    "commentSuccess": "تم التعليق بنجاح",
+    "dmSent": "تم إرسال الرسالة"
+  },
+  "database": {
+    "connected": "تم الاتصال بقاعدة البيانات",
+    "error": "خطأ في قاعدة البيانات: %1",
+    "userCreated": "تم إنشاء مستخدم جديد",
+    "userUpdated": "تم تحديث بيانات المستخدم",
+    "backupCreated": "تم إنشاء نسخة احتياطية",
+    "backupRestored": "تم استعادة النسخة الاحتياطية"
+  },
+  "security": {
+    "accessDenied": "تم رفض الوصول",
+    "rateLimitExceeded": "تم تجاوز الحد المسموح من الطلبات",
+    "invalidInput": "مدخل غير صحيح",
+    "ipBlocked": "تم حظر عنوان IP",
+    "unauthorized": "غير مصرح"
+  },
+  "dashboard": {
+    "title": "لوحة تحكم البوت",
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "stats": "الإحصائيات",
+    "users": "المستخدمون",
+    "settings": "الإعدادات",
+    "logs": "السجلات",
+    "commands": "الأوامر"
+  },
+  "errors": {
+    "unknown": "خطأ غير معروف",
+    "networkError": "خطأ في الشبكة",
+    "timeoutError": "انتهت المهلة الزمنية",
+    "parseError": "خطأ في تحليل البيانات",
+    "fileNotFound": "الملف غير موجود",
+    "accessDenied": "تم رفض الوصول"
+  }
+}

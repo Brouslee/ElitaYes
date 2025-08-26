@@ -1,0 +1,63 @@
+{
+  "commandBanned": {},
+  "envGlobal": {
+    "instagramApiKey": "",
+    "proxyApiKey": "",
+    "debugMode": false
+  },
+  "envCommands": {
+    "profile": {
+      "maxProfiles": 50,
+      "cacheTimeout": 300000
+    },
+    "follow": {
+      "maxFollowsPerHour": 60,
+      "cooldownTime": 3600000
+    },
+    "like": {
+      "maxLikesPerHour": 120,
+      "randomDelay": true
+    },
+    "comment": {
+      "maxCommentsPerHour": 30,
+      "minCommentLength": 3
+    },
+    "dm": {
+      "maxDMsPerHour": 20,
+      "requireFollowBack": true
+    },
+    "analytics": {
+      "trackingEnabled": true,
+      "exportFormat": "json"
+    }
+  },
+  "envEvents": {
+    "autoRespond": {
+      "enabled": false,
+      "responseDelay": 5000
+    },
+    "followBack": {
+      "enabled": false,
+      "autoFollow": false
+    },
+    "likeBack": {
+      "enabled": false,
+      "percentage": 80
+    }
+  },
+  "commandUnload": [],
+  "adminOnly": {
+    "enable": false,
+    "ignoreCommand": []
+  },
+  "cooldowns": {
+    "global": 3000,
+    "perUser": 5000,
+    "perCommand": {}
+  },
+  "permissions": {
+    "dev": [],
+    "admin": [],
+    "moderator": []
+  }
+}
