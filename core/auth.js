@@ -20,7 +20,7 @@ class InstagramAuth {
      */
     async initialize() {
         try {
-            logger.info('بدء تهيئة نظام المصادقة - Initializing authentication system...');
+            logger.start('Initializing authentication system...');
 
             // محاولة تحميل الكوكيز المحفوظة
             // Try to load saved cookies
@@ -39,19 +39,19 @@ class InstagramAuth {
                         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                     };
                     this.isAuthenticated = true;
-                    logger.info('تم تسجيل الدخول باستخدام الكوكيز المحفوظة - Authenticated using saved cookies');
+                    logger.success('Authenticated using saved cookies');
                 } else {
-                    logger.warn('الكوكيز المحفوظة غير صحيحة - Saved cookies are invalid');
+                    logger.cookieError('Saved cookies are invalid - clearing old cookies');
                     await this.clearCookies();
                 }
             } else {
-                logger.info('لا توجد كوكيز محفوظة - No saved cookies found');
+                logger.warn('No saved cookies found - manual login required');
             }
 
             return this.session;
 
         } catch (error) {
-            logger.error('فشل في تهيئة نظام المصادقة - Failed to initialize authentication:', error);
+            logger.authError('Failed to initialize authentication system', error);
             throw error;
         }
     }
@@ -65,15 +65,15 @@ class InstagramAuth {
             const cookieData = await fs.readFile(this.cookiePath, 'utf8');
             const cookies = JSON.parse(cookieData);
             
-            logger.debug('تم تحميل الكوكيز بنجاح - Cookies loaded successfully');
+            logger.debug('Cookies loaded successfully');
             return cookies;
 
         } catch (error) {
             if (error.code === 'ENOENT') {
-                logger.debug('ملف الكوكيز غير موجود - Cookie file does not exist');
+                logger.debug('Cookie file does not exist');
                 return null;
             }
-            logger.error('خطأ في تحميل الكوكيز - Error loading cookies:', error);
+            logger.cookieError('Error loading cookies from file', error);
             return null;
         }
     }
@@ -99,10 +99,10 @@ class InstagramAuth {
             };
 
             await fs.writeFile(this.cookiePath, JSON.stringify(cookieData, null, 2));
-            logger.info('تم حفظ الكوكيز بنجاح - Cookies saved successfully');
+            logger.success('Cookies saved successfully');
 
         } catch (error) {
-            logger.error('فشل في حفظ الكوكيز - Failed to save cookies:', error);
+            logger.cookieError('Failed to save cookies to file', error);
             throw error;
         }
     }
@@ -126,7 +126,7 @@ class InstagramAuth {
             // Check if required cookies exist
             for (const required of requiredCookies) {
                 if (!cookies[required]) {
-                    logger.debug(`كوكي مطلوب مفقود - Missing required cookie: ${required}`);
+                    logger.cookieError(`Missing required cookie: ${required}`);
                     return false;
                 }
             }
@@ -138,15 +138,15 @@ class InstagramAuth {
             const hoursDiff = (now - savedAt) / (1000 * 60 * 60);
 
             if (hoursDiff > 24) { // انتهاء الصلاحية بعد 24 ساعة
-                logger.debug('انتهت صلاحية الكوكيز - Cookies have expired');
+                logger.cookieError('Cookies have expired (older than 24 hours)');
                 return false;
             }
 
-            logger.debug('الكوكيز صحيحة - Cookies are valid');
+            logger.debug('Cookies are valid');
             return true;
 
         } catch (error) {
-            logger.error('خطأ في التحقق من الكوكيز - Error validating cookies:', error);
+            logger.cookieError('Error validating cookies', error);
             return false;
         }
     }
@@ -157,12 +157,12 @@ class InstagramAuth {
      */
     async login(cookies) {
         try {
-            logger.info('محاولة تسجيل دخول جديد - Attempting new login...');
+            logger.start('Attempting new login with provided cookies...');
 
             // التحقق من صحة الكوكيز المرسلة
             // Validate provided cookies
             if (!this.validateCookieFormat(cookies)) {
-                throw new Error('تنسيق الكوكيز غير صحيح - Invalid cookie format');
+                throw new Error('Invalid cookie format - required cookies missing');
             }
 
             // حفظ الكوكيز
@@ -179,12 +179,12 @@ class InstagramAuth {
             };
 
             this.isAuthenticated = true;
-            logger.info('تم تسجيل الدخول بنجاح - Login successful');
+            logger.success('Login successful - authentication established');
 
             return this.session;
 
         } catch (error) {
-            logger.error('فشل في تسجيل الدخول - Login failed:', error);
+            logger.authError('Login failed', error);
             throw error;
         }
     }
@@ -217,7 +217,7 @@ class InstagramAuth {
      */
     async logout() {
         try {
-            logger.info('تسجيل خروج - Logging out...');
+            logger.info('Logging out...');
 
             // مسح الكوكيز
             // Clear cookies
@@ -228,10 +228,10 @@ class InstagramAuth {
             this.session = null;
             this.isAuthenticated = false;
 
-            logger.info('تم تسجيل الخروج بنجاح - Logout successful');
+            logger.success('Logout successful');
 
         } catch (error) {
-            logger.error('خطأ في تسجيل الخروج - Error during logout:', error);
+            logger.authError('Error during logout', error);
             throw error;
         }
     }
@@ -243,10 +243,10 @@ class InstagramAuth {
     async clearCookies() {
         try {
             await fs.unlink(this.cookiePath);
-            logger.debug('تم مسح ملف الكوكيز - Cookie file deleted');
+            logger.debug('Cookie file deleted');
         } catch (error) {
             if (error.code !== 'ENOENT') {
-                logger.error('خطأ في مسح الكوكيز - Error clearing cookies:', error);
+                logger.cookieError('Error clearing cookies', error);
             }
         }
     }
@@ -290,7 +290,7 @@ class InstagramAuth {
      */
     async cleanup() {
         try {
-            logger.info('تنظيف موارد المصادقة - Cleaning up authentication resources...');
+            logger.info('Cleaning up authentication resources...');
             
             // لا نحذف الكوكيز عند التنظيف للحفاظ على الجلسة
             // We don't delete cookies during cleanup to preserve session
@@ -298,7 +298,7 @@ class InstagramAuth {
             this.isAuthenticated = false;
 
         } catch (error) {
-            logger.error('خطأ في تنظيف الموارد - Error during cleanup:', error);
+            logger.error('Error during cleanup', error);
         }
     }
 }
