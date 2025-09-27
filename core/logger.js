@@ -2,9 +2,35 @@ const fs = require('fs');
 const path = require('path');
 const util = require('util');
 
+// ANSI Color codes for console output
+const colors = {
+    reset: '\x1b[0m',
+    bright: '\x1b[1m',
+    dim: '\x1b[2m',
+    
+    // Foreground colors
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    magenta: '\x1b[35m',
+    cyan: '\x1b[36m',
+    white: '\x1b[37m',
+    gray: '\x1b[90m',
+    
+    // Background colors
+    bgRed: '\x1b[41m',
+    bgGreen: '\x1b[42m',
+    bgYellow: '\x1b[43m',
+    bgBlue: '\x1b[44m',
+    bgMagenta: '\x1b[45m',
+    bgCyan: '\x1b[46m',
+    bgWhite: '\x1b[47m'
+};
+
 /**
- * نظام التسجيل المتقدم
- * Advanced Logging System
+ * Advanced Logging System with Colors and Better Formatting
+ * Enhanced console output with beautiful formatting
  */
 
 class Logger {
@@ -35,53 +61,95 @@ class Logger {
                 fs.mkdirSync(this.logDir, { recursive: true });
             }
         } catch (error) {
-            console.error('فشل في إنشاء مجلد السجلات - Failed to create logs directory:', error);
+            console.error('Failed to create logs directory:', error);
         }
     }
 
     /**
-     * تنسيق الرسالة
-     * Format log message
+     * Format log message with colors and better styling
      */
-    formatMessage(level, message, data = null) {
-        const timestamp = new Date().toISOString();
-        const levelStr = level.toUpperCase().padEnd(5);
+    formatMessage(level, message, data = null, forConsole = false) {
+        const now = new Date();
+        const timestamp = now.toLocaleTimeString('en-US', { hour12: false });
+        const date = now.toLocaleDateString('en-US');
         
-        let formattedMessage = `[${timestamp}] [${levelStr}] ${message}`;
+        // Get level styling
+        const levelInfo = this.getLevelStyling(level);
+        const levelStr = levelInfo.label.padEnd(7);
         
-        if (data) {
-            if (typeof data === 'object') {
-                formattedMessage += '\n' + util.inspect(data, { depth: 3, colors: false });
-            } else {
-                formattedMessage += ' ' + data;
+        let formattedMessage;
+        
+        if (forConsole) {
+            // Colored console output
+            const timeColor = `${colors.gray}${date} ${colors.cyan}${timestamp}${colors.reset}`;
+            const levelColor = `${levelInfo.color}${levelStr}${colors.reset}`;
+            const separator = `${colors.gray}│${colors.reset}`;
+            
+            formattedMessage = `${timeColor} ${separator} ${levelColor} ${separator} ${message}`;
+            
+            if (data) {
+                if (typeof data === 'object') {
+                    formattedMessage += '\n' + `${colors.gray}${''.padStart(28)}│${colors.reset} ` + 
+                        util.inspect(data, { depth: 3, colors: true });
+                } else {
+                    formattedMessage += ` ${colors.dim}${data}${colors.reset}`;
+                }
+            }
+        } else {
+            // Plain text for file output
+            formattedMessage = `[${date} ${timestamp}] [${levelStr}] ${message}`;
+            
+            if (data) {
+                if (typeof data === 'object') {
+                    formattedMessage += '\n' + util.inspect(data, { depth: 3, colors: false });
+                } else {
+                    formattedMessage += ' ' + data;
+                }
             }
         }
         
         return formattedMessage;
     }
+    
+    /**
+     * Get level specific styling
+     */
+    getLevelStyling(level) {
+        const styles = {
+            error: { color: `${colors.bright}${colors.bgRed}${colors.white}`, label: '✖ ERROR', icon: '🚨' },
+            warn:  { color: `${colors.bright}${colors.bgYellow}${colors.white}`, label: '⚠ WARN', icon: '⚠️' },
+            info:  { color: `${colors.bright}${colors.bgBlue}${colors.white}`, label: '✓ INFO', icon: 'ℹ️' },
+            debug: { color: `${colors.bright}${colors.bgMagenta}${colors.white}`, label: '⚡ DEBUG', icon: '🔍' },
+            success: { color: `${colors.bright}${colors.bgGreen}${colors.white}`, label: '✅ SUCCESS', icon: '✅' },
+            start: { color: `${colors.bright}${colors.bgCyan}${colors.white}`, label: '🚀 START', icon: '🚀' },
+            complete: { color: `${colors.bright}${colors.bgGreen}${colors.white}`, label: '✨ DONE', icon: '✨' }
+        };
+        
+        return styles[level] || styles.info;
+    }
 
     /**
-     * كتابة السجل
-     * Write log entry
+     * Write log entry with enhanced formatting
      */
     writeLog(level, message, data = null) {
-        // التحقق من مستوى التسجيل
         // Check log level
         if (this.logLevels[level] > this.currentLevel) {
             return;
         }
 
-        const formattedMessage = this.formatMessage(level, message, data);
+        // Format for console (with colors)
+        const consoleMessage = this.formatMessage(level, message, data, true);
         
-        // طباعة في وحدة التحكم
-        // Print to console
+        // Format for file (plain text)
+        const fileMessage = this.formatMessage(level, message, data, false);
+        
+        // Print to console with colors
         const consoleMethod = level === 'error' ? 'error' : 
                              level === 'warn' ? 'warn' : 'log';
-        console[consoleMethod](formattedMessage);
+        console[consoleMethod](consoleMessage);
         
-        // كتابة في الملف
-        // Write to file
-        this.writeToFile(formattedMessage);
+        // Write plain text to file
+        this.writeToFile(fileMessage);
     }
 
     /**
@@ -97,7 +165,7 @@ class Logger {
             this.rotateLogs();
             
         } catch (error) {
-            console.error('فشل في كتابة السجل - Failed to write to log file:', error);
+            console.error('Failed to write to log file:', error);
         }
     }
 
@@ -116,13 +184,12 @@ class Logger {
                 
                 fs.renameSync(this.logFile, rotatedFile);
                 
-                // الاحتفاظ بـ 5 ملفات سجل فقط
                 // Keep only 5 log files
                 this.cleanupOldLogs();
             }
             
         } catch (error) {
-            console.error('خطأ في تدوير السجلات - Error rotating logs:', error);
+            console.error('Error rotating logs:', error);
         }
     }
 
@@ -141,7 +208,6 @@ class Logger {
                 }))
                 .sort((a, b) => b.mtime - a.mtime);
 
-            // حذف الملفات الزائدة
             // Delete excess files
             if (files.length > 5) {
                 for (let i = 5; i < files.length; i++) {
@@ -150,7 +216,7 @@ class Logger {
             }
 
         } catch (error) {
-            console.error('خطأ في تنظيف السجلات القديمة - Error cleaning up old logs:', error);
+            console.error('Error cleaning up old logs:', error);
         }
     }
 
@@ -187,27 +253,69 @@ class Logger {
     }
 
     /**
-     * تسجيل نجاح العملية
-     * Log success
+     * Log success with special formatting
      */
     success(message, data = null) {
-        this.info(`✅ ${message}`, data);
+        this.writeLog('success', message, data);
     }
 
     /**
-     * تسجيل بداية العملية
-     * Log process start
+     * Log process start with special formatting
      */
     start(message, data = null) {
-        this.info(`🚀 ${message}`, data);
+        this.writeLog('start', message, data);
     }
 
     /**
-     * تسجيل انتهاء العملية
-     * Log process completion
+     * Log process completion with special formatting
      */
     complete(message, data = null) {
-        this.info(`✨ ${message}`, data);
+        this.writeLog('complete', message, data);
+    }
+    
+    /**
+     * Log authentication errors
+     */
+    authError(message, data = null) {
+        this.error(`🔐 Authentication Error: ${message}`, data);
+    }
+    
+    /**
+     * Log cookie-related errors
+     */
+    cookieError(message, data = null) {
+        this.error(`🍪 Cookie Error: ${message}`, data);
+    }
+    
+    /**
+     * Log connection errors
+     */
+    connectionError(message, data = null) {
+        this.error(`🌐 Connection Error: ${message}`, data);
+    }
+    
+    /**
+     * Log system critical errors
+     */
+    critical(message, data = null) {
+        const levelInfo = this.getLevelStyling('error');
+        const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const date = new Date().toLocaleDateString('en-US');
+        
+        // Special formatting for critical errors
+        const consoleMessage = `${colors.red}${colors.bright}🚨 CRITICAL ERROR 🚨${colors.reset}\n` +
+            `${colors.gray}${date} ${colors.cyan}${timestamp}${colors.reset} ${colors.gray}│${colors.reset} ` +
+            `${colors.red}${colors.bright}${message}${colors.reset}`;
+            
+        console.error(consoleMessage);
+        
+        if (data) {
+            console.error(`${colors.gray}${''.padStart(28)}│${colors.reset} `, data);
+        }
+        
+        // Also write to file
+        const fileMessage = `[${date} ${timestamp}] [CRITICAL] ${message}`;
+        this.writeToFile(fileMessage + (data ? '\n' + JSON.stringify(data, null, 2) : ''));
     }
 
     /**
@@ -217,9 +325,9 @@ class Logger {
     setLevel(level) {
         if (this.logLevels.hasOwnProperty(level)) {
             this.currentLevel = this.logLevels[level];
-            this.info(`تم تغيير مستوى التسجيل إلى - Log level changed to: ${level}`);
+            this.info(`Log level changed to: ${level}`);
         } else {
-            this.warn(`مستوى تسجيل غير صحيح - Invalid log level: ${level}`);
+            this.warn(`Invalid log level: ${level}`);
         }
     }
 
@@ -243,10 +351,10 @@ class Logger {
                 fs.unlinkSync(path.join(this.logDir, file));
             }
             
-            this.info('تم مسح جميع ملفات السجل - All log files cleared');
+            this.info('All log files cleared');
             
         } catch (error) {
-            this.error('فشل في مسح ملفات السجل - Failed to clear log files:', error);
+            this.error('Failed to clear log files:', error);
         }
     }
 
@@ -273,7 +381,7 @@ class Logger {
             };
             
         } catch (error) {
-            this.error('فشل في الحصول على إحصائيات السجل - Failed to get log statistics:', error);
+            this.error('Failed to get log statistics:', error);
             return null;
         }
     }
