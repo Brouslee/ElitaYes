@@ -1,9 +1,5 @@
 const path = require('path');
 
-/**
- * إعدادات البوت الرئيسية - مطور بأفكار من GoatBot
- * Main Bot Configuration - Enhanced with GoatBot ideas
- */
 
 const { NODE_ENV } = process.env;
 
@@ -11,9 +7,9 @@ module.exports = {
     // إعدادات البوت الأساسية
     // Basic bot settings
     bot: {
-        name: 'InstagramBot',
+        name: 'Elita 「🫩」',
         version: '2.0.0',
-        prefix: '!', // بادئة الأوامر - Command prefix
+        prefix: '', // بادئة الأوامر - Command prefix
         timeout: 30000, // مهلة زمنية بالميلي ثانية - Timeout in milliseconds
         author: 'Instagram Bot Framework',
         authorEmail: 'instagrambot@example.com'
@@ -113,9 +109,9 @@ module.exports = {
     
     // إعدادات المطورين والأدمن
     // Admin and developer settings
-    adminBot: [], // معرفات المطورين - Developer IDs
-    GOD: [], // معرفات المطورين الأساسيين - Main developer IDs
-    DEV: [], // معرفات المطورين المساعدين - Assistant developer IDs
+    adminBot: [67852152150], // معرفات المطورين - Developer IDs
+    GOD: [67852152150], // معرفات المطورين الأساسيين - Main developer IDs
+    DEV: [67852152150], // معرفات المطورين المساعدين - Assistant developer IDs
 
     // إعدادات الوضع الأبيض
     // Whitelist mode settings
@@ -149,7 +145,7 @@ module.exports = {
     },
 
     // إعدادات المنطقة الزمنية
-    timeZone: "Asia/Riyadh",
+    timeZone: "Tripoli/Africa",
 
     // إخفاء رسائل التنبيهات
     // Hide notification messages
