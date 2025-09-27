@@ -4,8 +4,7 @@ const EventEmitter = require('events');
 const logger = require('../core/logger');
 
 /**
- * معالج الأحداث
- * Event Handler
+ * Event Handler - Enhanced with better error handling
  */
 
 class EventHandler extends EventEmitter {
@@ -23,7 +22,7 @@ class EventHandler extends EventEmitter {
      */
     async loadEvents() {
         try {
-            logger.info('بدء تحميل الأحداث - Starting to load events...');
+            logger.start('Loading events from directory...');
 
             // مسح الأحداث المحملة سابقاً
             // Clear previously loaded events
@@ -34,7 +33,7 @@ class EventHandler extends EventEmitter {
             try {
                 await fs.access(this.eventsPath);
             } catch (error) {
-                logger.warn('مجلد الأحداث غير موجود - Events directory does not exist, creating...');
+                logger.warn('Events directory does not exist, creating...');
                 await fs.mkdir(this.eventsPath, { recursive: true });
                 return;
             }
@@ -52,15 +51,19 @@ class EventHandler extends EventEmitter {
                     await this.loadEvent(file);
                     loadedCount++;
                 } catch (error) {
-                    logger.error(`فشل في تحميل الحدث - Failed to load event ${file}:`, error);
+                    logger.error(`Failed to load event ${file}:`, error);
                     failedCount++;
                 }
             }
 
-            logger.info(`تم تحميل ${loadedCount} حدث بنجاح، فشل ${failedCount} - Loaded ${loadedCount} events successfully, ${failedCount} failed`);
+            if (failedCount > 0) {
+                logger.warn(`Loaded ${loadedCount} events successfully, ${failedCount} failed`);
+            } else {
+                logger.success(`Loaded ${loadedCount} events successfully`);
+            }
 
         } catch (error) {
-            logger.error('خطأ في تحميل الأحداث - Error loading events:', error);
+            logger.critical('Critical error loading events', error);
             throw error;
         }
     }
@@ -84,7 +87,7 @@ class EventHandler extends EventEmitter {
             // التحقق من صحة بنية الحدث
             // Validate event structure
             if (!this.validateEvent(eventModule)) {
-                throw new Error(`بنية الحدث غير صحيحة - Invalid event structure: ${filename}`);
+                throw new Error(`Invalid event structure: ${filename}`);
             }
 
             // تسجيل الحدث
@@ -95,10 +98,10 @@ class EventHandler extends EventEmitter {
             // Bind event listener
             this.bindEventListener(eventModule);
 
-            logger.debug(`تم تحميل الحدث - Event loaded: ${eventModule.config.name}`);
+            logger.debug(`Event loaded: ${eventModule.config.name}`);
 
         } catch (error) {
-            logger.error(`خطأ في تحميل الحدث - Error loading event ${filename}:`, error);
+            logger.error(`Error loading event ${filename}:`, error);
             throw error;
         }
     }
@@ -146,14 +149,14 @@ class EventHandler extends EventEmitter {
                     timestamp: new Date()
                 };
 
-                logger.debug(`تنفيذ حدث - Executing event: ${name} for ${event}`);
+                logger.debug(`Executing event: ${name} for ${event}`);
                 
                 // تنفيذ الحدث
                 // Execute event
                 await eventModule.run(context, ...args);
 
             } catch (error) {
-                logger.error(`خطأ في تنفيذ الحدث - Error executing event ${name}:`, error);
+                logger.error(`Error executing event ${name}:`, error);
             }
         };
 
@@ -204,10 +207,10 @@ class EventHandler extends EventEmitter {
 
             // تسجيل الحدث
             // Log event
-            logger.debug(`تم إرسال الحدث - Event emitted: ${eventName}`);
+            logger.debug(`Event emitted: ${eventName}`);
 
         } catch (error) {
-            logger.error(`خطأ في معالجة الحدث - Error handling event ${eventName}:`, error);
+            logger.error(`Error handling event ${eventName}:`, error);
         }
     }
 
@@ -234,10 +237,10 @@ class EventHandler extends EventEmitter {
                 once: once
             });
 
-            logger.debug(`تم إضافة مستمع مخصص - Custom listener added for: ${eventName}`);
+            logger.debug(`Custom listener added for: ${eventName}`);
 
         } catch (error) {
-            logger.error(`خطأ في إضافة مستمع مخصص - Error adding custom listener:`, error);
+            logger.error('Error adding custom listener:', error);
         }
     }
 
@@ -259,10 +262,10 @@ class EventHandler extends EventEmitter {
                 }
             }
 
-            logger.debug(`تم إزالة مستمع مخصص - Custom listener removed for: ${eventName}`);
+            logger.debug(`Custom listener removed for: ${eventName}`);
 
         } catch (error) {
-            logger.error(`خطأ في إزالة مستمع مخصص - Error removing custom listener:`, error);
+            logger.error('Error removing custom listener:', error);
         }
     }
 
@@ -277,7 +280,7 @@ class EventHandler extends EventEmitter {
             eventList.push({
                 name: name,
                 event: event.config.event,
-                description: event.config.description || 'لا يوجد وصف - No description',
+                description: event.config.description || 'No description',
                 once: event.config.once || false,
                 priority: event.config.priority || 0
             });
@@ -322,7 +325,7 @@ class EventHandler extends EventEmitter {
             const event = this.events.get(eventName);
             
             if (!event) {
-                throw new Error(`الحدث غير موجود - Event not found: ${eventName}`);
+                throw new Error(`Event not found: ${eventName}`);
             }
 
             // العثور على ملف الحدث
@@ -339,7 +342,7 @@ class EventHandler extends EventEmitter {
             });
 
             if (!eventFile) {
-                throw new Error(`ملف الحدث غير موجود - Event file not found: ${eventName}`);
+                throw new Error(`Event file not found: ${eventName}`);
             }
 
             // إزالة المستمعين الحاليين
@@ -361,10 +364,10 @@ class EventHandler extends EventEmitter {
             // Reload event
             await this.loadEvent(eventFile);
 
-            logger.info(`تم إعادة تحميل الحدث - Event reloaded: ${eventName}`);
+            logger.success(`Event reloaded: ${eventName}`);
 
         } catch (error) {
-            logger.error(`فشل في إعادة تحميل الحدث - Failed to reload event ${eventName}:`, error);
+            logger.error(`Failed to reload event ${eventName}:`, error);
             throw error;
         }
     }
@@ -375,16 +378,16 @@ class EventHandler extends EventEmitter {
      */
     async shutdown() {
         try {
-            logger.info('إيقاف معالج الأحداث - Shutting down event handler...');
+            logger.info('Shutting down event handler...');
             
             // إلغاء جميع المستمعين
             // Remove all listeners
             this.unloadAllEvents();
 
-            logger.info('تم إيقاف معالج الأحداث - Event handler shutdown completed');
+            logger.complete('Event handler shutdown completed');
 
         } catch (error) {
-            logger.error('خطأ في إيقاف معالج الأحداث - Error shutting down event handler:', error);
+            logger.error('Error shutting down event handler:', error);
         }
     }
 }
