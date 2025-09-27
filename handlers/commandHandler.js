@@ -22,7 +22,7 @@ class CommandHandler {
      */
     async loadCommands() {
         try {
-            logger.info('بدء تحميل الأوامر - Starting to load commands...');
+            logger.start('Loading commands from directory...');
 
             // مسح الأوامر المحملة سابقاً
             // Clear previously loaded commands
@@ -34,7 +34,7 @@ class CommandHandler {
             try {
                 await fs.access(this.commandsPath);
             } catch (error) {
-                logger.warn('مجلد الأوامر غير موجود - Commands directory does not exist, creating...');
+                logger.warn('Commands directory does not exist, creating...');
                 await fs.mkdir(this.commandsPath, { recursive: true });
                 return;
             }
@@ -52,15 +52,19 @@ class CommandHandler {
                     await this.loadCommand(file);
                     loadedCount++;
                 } catch (error) {
-                    logger.error(`فشل في تحميل الأمر - Failed to load command ${file}:`, error);
+                    logger.error(`Failed to load command ${file}:`, error);
                     failedCount++;
                 }
             }
 
-            logger.info(`تم تحميل ${loadedCount} أمر بنجاح، فشل ${failedCount} - Loaded ${loadedCount} commands successfully, ${failedCount} failed`);
+            if (failedCount > 0) {
+                logger.warn(`Loaded ${loadedCount} commands successfully, ${failedCount} failed`);
+            } else {
+                logger.success(`Loaded ${loadedCount} commands successfully`);
+            }
 
         } catch (error) {
-            logger.error('خطأ في تحميل الأوامر - Error loading commands:', error);
+            logger.critical('Critical error loading commands', error);
             throw error;
         }
     }
@@ -84,7 +88,7 @@ class CommandHandler {
             // التحقق من صحة بنية الأمر
             // Validate command structure
             if (!this.validateCommand(commandModule)) {
-                throw new Error(`بنية الأمر غير صحيحة - Invalid command structure: ${filename}`);
+                throw new Error(`Invalid command structure: ${filename}`);
             }
 
             // تسجيل الأمر
@@ -99,10 +103,10 @@ class CommandHandler {
                 }
             }
 
-            logger.debug(`تم تحميل الأمر - Command loaded: ${commandModule.config.name}`);
+            logger.debug(`Command loaded: ${commandModule.config.name}`);
 
         } catch (error) {
-            logger.error(`خطأ في تحميل الأمر - Error loading command ${filename}:`, error);
+            logger.error(`Error loading command ${filename}:`, error);
             throw error;
         }
     }
@@ -148,14 +152,15 @@ class CommandHandler {
             const command = this.getCommand(commandName);
             
             if (!command) {
-                logger.debug(`أمر غير موجود - Command not found: ${commandName}`);
+                logger.debug(`Command not found: ${commandName}`);
                 return;
             }
 
             // التحقق من الصلاحيات
             // Check permissions
             if (!this.checkPermissions(command, messageData)) {
-                await this.bot.sendMessage(userId, 'ليس لديك صلاحية لاستخدام هذا الأمر - You don\'t have permission to use this command');
+                await this.bot.sendMessage(userId, '⛔ **Access Denied**\n\nYou don\'t have permission to use this command.\n\nContact an administrator if you believe this is an error.');
+                logger.warn(`Permission denied for user ${userId} on command ${commandName}`);
                 return;
             }
 
@@ -163,7 +168,8 @@ class CommandHandler {
             // Check cooldown
             if (!this.checkCooldown(command, userId)) {
                 const remaining = this.getRemainingCooldown(command, userId);
-                await this.bot.sendMessage(userId, `يرجى الانتظار ${Math.ceil(remaining / 1000)} ثانية قبل استخدام هذا الأمر مرة أخرى - Please wait ${Math.ceil(remaining / 1000)} seconds before using this command again`);
+                await this.bot.sendMessage(userId, `⏱️ **Cooldown Active**\n\nPlease wait ${Math.ceil(remaining / 1000)} seconds before using the \`${commandName}\` command again.`);
+                logger.debug(`Cooldown active for user ${userId} on command ${commandName}`);
                 return;
             }
 
@@ -184,7 +190,7 @@ class CommandHandler {
 
             // تسجيل استخدام الأمر
             // Log command usage
-            logger.info(`تنفيذ الأمر - Executing command: ${command.config.name} by ${username || userId}`);
+            logger.info(`Executing command: ${command.config.name} by ${username || userId}`);
 
             // تنفيذ الأمر
             // Execute command
@@ -195,14 +201,14 @@ class CommandHandler {
             this.applyCooldown(command, userId);
 
         } catch (error) {
-            logger.error('خطأ في معالجة الأمر - Error handling command:', error);
+            logger.error('Error handling command:', error);
             
             // إرسال رسالة خطأ للمستخدم
             // Send error message to user
             try {
-                await this.bot.sendMessage(messageData.userId, 'حدث خطأ أثناء تنفيذ الأمر - An error occurred while executing the command');
+                await this.bot.sendMessage(messageData.userId, '❌ **Command Error**\n\nAn error occurred while executing the command. Please try again later or contact support if the issue persists.');
             } catch (sendError) {
-                logger.error('فشل في إرسال رسالة الخطأ - Failed to send error message:', sendError);
+                logger.critical('Failed to send error message to user', sendError);
             }
         }
     }
@@ -327,11 +333,11 @@ class CommandHandler {
         for (const [name, command] of this.commands) {
             commandList.push({
                 name: name,
-                description: command.config.description || 'لا يوجد وصف - No description',
+                description: command.config.description || 'No description',
                 usage: command.config.usage || name,
                 aliases: command.config.aliases || [],
                 cooldown: command.config.cooldown || 0,
-                category: command.config.category || 'عام - General'
+                category: command.config.category || 'General'
             });
         }
 
@@ -355,7 +361,7 @@ class CommandHandler {
             const command = this.getCommand(commandName);
             
             if (!command) {
-                throw new Error(`الأمر غير موجود - Command not found: ${commandName}`);
+                throw new Error(`Command not found: ${commandName}`);
             }
 
             // العثور على ملف الأمر
@@ -372,7 +378,7 @@ class CommandHandler {
             });
 
             if (!commandFile) {
-                throw new Error(`ملف الأمر غير موجود - Command file not found: ${commandName}`);
+                throw new Error(`Command file not found: ${commandName}`);
             }
 
             // إزالة الأمر الحالي
@@ -388,10 +394,10 @@ class CommandHandler {
             // Reload command
             await this.loadCommand(commandFile);
 
-            logger.info(`تم إعادة تحميل الأمر - Command reloaded: ${commandName}`);
+            logger.success(`Command reloaded: ${commandName}`);
 
         } catch (error) {
-            logger.error(`فشل في إعادة تحميل الأمر - Failed to reload command ${commandName}:`, error);
+            logger.error(`Failed to reload command ${commandName}:`, error);
             throw error;
         }
     }
@@ -402,7 +408,7 @@ class CommandHandler {
      */
     async shutdown() {
         try {
-            logger.info('إيقاف معالج الأوامر - Shutting down command handler...');
+            logger.info('Shutting down command handler...');
             
             // مسح الكاش
             // Clear cache
@@ -410,10 +416,10 @@ class CommandHandler {
             this.aliases.clear();
             this.cooldowns.clear();
 
-            logger.info('تم إيقاف معالج الأوامر - Command handler shutdown completed');
+            logger.complete('Command handler shutdown completed');
 
         } catch (error) {
-            logger.error('خطأ في إيقاف معالج الأوامر - Error shutting down command handler:', error);
+            logger.error('Error shutting down command handler:', error);
         }
     }
 }
