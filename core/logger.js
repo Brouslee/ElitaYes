@@ -1,392 +1,545 @@
-const fs = require('fs');
+const db = require('../config/database');
+const User = require('./models/User');
+const Group = require('./models/Group');
+const logger = require('../core/logger');
+const fs = require('fs').promises;
 const path = require('path');
-const util = require('util');
-
-// ANSI Color codes for console output
-const colors = {
-    reset: '\x1b[0m',
-    bright: '\x1b[1m',
-    dim: '\x1b[2m',
-    
-    // Foreground colors
-    red: '\x1b[31m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-    blue: '\x1b[34m',
-    magenta: '\x1b[35m',
-    cyan: '\x1b[36m',
-    white: '\x1b[37m',
-    gray: '\x1b[90m',
-    
-    // Background colors
-    bgRed: '\x1b[41m',
-    bgGreen: '\x1b[42m',
-    bgYellow: '\x1b[43m',
-    bgBlue: '\x1b[44m',
-    bgMagenta: '\x1b[45m',
-    bgCyan: '\x1b[46m',
-    bgWhite: '\x1b[47m'
-};
 
 /**
- * ELITA Advanced Logging System with Colors and Better Formatting
- * Enhanced console output with beautiful formatting
+ * تهيئة قاعدة البيانات لبوت ELITA
+ * ELITA Database Initialization
  * 
- * Created by Mohammed Al-Akari for ELITA Instagram Bot Framework
+ * تم إنشاؤه بواسطة محمد العكاري - Created by Mohammed Al-Akari
  */
 
-class Logger {
+class DatabaseInitializer {
     constructor() {
-        this.logLevels = {
-            error: 0,
-            warn: 1,
-            info: 2,
-            debug: 3
-        };
-        
-        this.currentLevel = this.logLevels[process.env.LOG_LEVEL || 'info'];
-        this.logDir = path.join(__dirname, '../logs');
-        this.logFile = path.join(this.logDir, 'bot.log');
-        
-        // إنشاء مجلد السجلات
-        // Create logs directory
-        this.ensureLogDirectory();
+        this.isInitialized = false;
     }
 
     /**
-     * إنشاء مجلد السجلات
-     * Ensure logs directory exists
+     * تهيئة قاعدة البيانات وإنشاء الجداول
+     * Initialize database and create tables
      */
-    ensureLogDirectory() {
+    async initialize() {
         try {
-            if (!fs.existsSync(this.logDir)) {
-                fs.mkdirSync(this.logDir, { recursive: true });
-            }
+            logger.info('بدء تهيئة قاعدة البيانات - Starting database initialization...');
+
+            // الاتصال بقاعدة البيانات
+            // Connect to database
+            await db.connect();
+
+            // إنشاء الجداول
+            // Create tables
+            await this.createTables();
+
+            // إنشاء الفهارس
+            // Create indexes
+            await this.createIndexes();
+
+            // تشغيل التحديثات إذا لزم الأمر
+            // Run migrations if needed
+            await this.runMigrations();
+
+            this.isInitialized = true;
+            logger.info('تم تهيئة قاعدة البيانات بنجاح - Database initialized successfully');
+
         } catch (error) {
-            console.error('Failed to create logs directory:', error);
+            logger.error('فشل في تهيئة قاعدة البيانات - Failed to initialize database:', error);
+            throw error;
         }
     }
 
     /**
-     * Format log message with colors and better styling
+     * إنشاء جميع الجداول المطلوبة
+     * Create all required tables
      */
-    formatMessage(level, message, data = null, forConsole = false) {
-        const now = new Date();
-        const timestamp = now.toLocaleTimeString('en-US', { hour12: false });
-        const date = now.toLocaleDateString('en-US');
-        
-        // Get level styling
-        const levelInfo = this.getLevelStyling(level);
-        const levelStr = levelInfo.label.padEnd(7);
-        
-        let formattedMessage;
-        
-        if (forConsole) {
-            // Colored console output
-            const timeColor = `${colors.gray}${date} ${colors.cyan}${timestamp}${colors.reset}`;
-            const levelColor = `${levelInfo.color}${levelStr}${colors.reset}`;
-            const separator = `${colors.gray}│${colors.reset}`;
-            
-            formattedMessage = `${timeColor} ${separator} ${levelColor} ${separator} ${message}`;
-            
-            if (data) {
-                if (typeof data === 'object') {
-                    formattedMessage += '\n' + `${colors.gray}${''.padStart(28)}│${colors.reset} ` + 
-                        util.inspect(data, { depth: 3, colors: true });
-                } else {
-                    formattedMessage += ` ${colors.dim}${data}${colors.reset}`;
+    async createTables() {
+        try {
+            logger.info('إنشاء الجداول - Creating tables...');
+
+            // إنشاء جدول المستخدمين
+            // Create users table
+            await User.createTable();
+
+            // إنشاء جداول المجموعات
+            // Create groups tables
+            await Group.createTable();
+
+            // إنشاء جدول الرسائل
+            // Create messages table
+            await this.createMessagesTable();
+
+            // إنشاء جدول سجل الأوامر
+            // Create command logs table
+            await this.createCommandLogsTable();
+
+            // إنشاء جدول الإعدادات
+            // Create settings table
+            await this.createSettingsTable();
+
+            logger.info('تم إنشاء جميع الجداول بنجاح - All tables created successfully');
+
+        } catch (error) {
+            logger.error('خطأ في إنشاء الجداول - Error creating tables:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * إنشاء جدول الرسائل
+     * Create messages table
+     */
+    async createMessagesTable() {
+        try {
+            const sql = `
+                CREATE TABLE IF NOT EXISTS messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    message_id TEXT UNIQUE NOT NULL,
+                    instagram_message_id TEXT,
+                    user_instagram_id TEXT NOT NULL,
+                    group_instagram_id TEXT,
+                    content TEXT NOT NULL,
+                    message_type TEXT DEFAULT 'text',
+                    is_command BOOLEAN DEFAULT FALSE,
+                    command_name TEXT,
+                    reply_to_message_id TEXT,
+                    media_url TEXT,
+                    media_type TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    processed BOOLEAN DEFAULT FALSE,
+                    metadata TEXT DEFAULT '{}',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `;
+
+            await db.run(sql);
+            logger.debug('تم إنشاء جدول الرسائل - Messages table created');
+
+        } catch (error) {
+            logger.error('خطأ في إنشاء جدول الرسائل - Error creating messages table:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * إنشاء جدول سجل الأوامر
+     * Create command logs table
+     */
+    async createCommandLogsTable() {
+        try {
+            const sql = `
+                CREATE TABLE IF NOT EXISTS command_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    command_name TEXT NOT NULL,
+                    user_instagram_id TEXT NOT NULL,
+                    group_instagram_id TEXT,
+                    arguments TEXT,
+                    execution_time INTEGER,
+                    success BOOLEAN DEFAULT TRUE,
+                    error_message TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    metadata TEXT DEFAULT '{}'
+                )
+            `;
+
+            await db.run(sql);
+            logger.debug('تم إنشاء جدول سجل الأوامر - Command logs table created');
+
+        } catch (error) {
+            logger.error('خطأ في إنشاء جدول سجل الأوامر - Error creating command logs table:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * إنشاء جدول الإعدادات
+     * Create settings table
+     */
+    async createSettingsTable() {
+        try {
+            const sql = `
+                CREATE TABLE IF NOT EXISTS bot_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT UNIQUE NOT NULL,
+                    value TEXT NOT NULL,
+                    description TEXT,
+                    category TEXT DEFAULT 'general',
+                    data_type TEXT DEFAULT 'string',
+                    is_encrypted BOOLEAN DEFAULT FALSE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `;
+
+            await db.run(sql);
+
+            // إدراج الإعدادات الافتراضية
+            // Insert default settings
+            await this.insertDefaultSettings();
+
+            logger.debug('تم إنشاء جدول الإعدادات - Settings table created');
+
+        } catch (error) {
+            logger.error('خطأ في إنشاء جدول الإعدادات - Error creating settings table:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * إدراج الإعدادات الافتراضية
+     * Insert default settings
+     */
+    async insertDefaultSettings() {
+        try {
+            const defaultSettings = [
+                {
+                    key: 'bot_version',
+                    value: '1.0.0',
+                    description: 'إصدار البوت الحالي - Current bot version',
+                    category: 'system'
+                },
+                {
+                    key: 'maintenance_mode',
+                    value: 'false',
+                    description: 'وضع الصيانة - Maintenance mode',
+                    category: 'system',
+                    data_type: 'boolean'
+                },
+                {
+                    key: 'max_message_length',
+                    value: '2000',
+                    description: 'الحد الأقصى لطول الرسالة - Maximum message length',
+                    category: 'limits',
+                    data_type: 'number'
+                },
+                {
+                    key: 'command_cooldown',
+                    value: '3',
+                    description: 'فترة الانتظار بين الأوامر بالثواني - Command cooldown in seconds',
+                    category: 'limits',
+                    data_type: 'number'
+                },
+                {
+                    key: 'auto_backup',
+                    value: 'true',
+                    description: 'النسخ الاحتياطي التلقائي - Automatic backup',
+                    category: 'backup',
+                    data_type: 'boolean'
+                }
+            ];
+
+            for (const setting of defaultSettings) {
+                const existingSetting = await db.get(
+                    'SELECT id FROM bot_settings WHERE key = ?',
+                    [setting.key]
+                );
+
+                if (!existingSetting) {
+                    await db.run(`
+                        INSERT INTO bot_settings (key, value, description, category, data_type)
+                        VALUES (?, ?, ?, ?, ?)
+                    `, [setting.key, setting.value, setting.description, setting.category, setting.data_type || 'string']);
                 }
             }
-        } else {
-            // Plain text for file output
-            formattedMessage = `[${date} ${timestamp}] [${levelStr}] ${message}`;
-            
-            if (data) {
-                if (typeof data === 'object') {
-                    formattedMessage += '\n' + util.inspect(data, { depth: 3, colors: false });
-                } else {
-                    formattedMessage += ' ' + data;
+
+        } catch (error) {
+            logger.error('خطأ في إدراج الإعدادات الافتراضية - Error inserting default settings:', error);
+        }
+    }
+
+    /**
+     * إنشاء الفهارس
+     * Create indexes
+     */
+    async createIndexes() {
+        try {
+            logger.info('إنشاء الفهارس - Creating indexes...');
+
+            const indexes = [
+                // فهارس جدول المستخدمين
+                // Users table indexes
+                'CREATE INDEX IF NOT EXISTS idx_users_instagram_id ON users(instagram_id)',
+                'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)',
+                'CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active)',
+
+                // فهارس جدول المجموعات
+                // Groups table indexes
+                'CREATE INDEX IF NOT EXISTS idx_groups_instagram_id ON groups(instagram_id)',
+                'CREATE INDEX IF NOT EXISTS idx_groups_name ON groups(name)',
+                'CREATE INDEX IF NOT EXISTS idx_groups_owner_id ON groups(owner_id)',
+
+                // فهارس جدول أعضاء المجموعات
+                // Group members table indexes
+                'CREATE INDEX IF NOT EXISTS idx_group_members_group_id ON group_members(group_id)',
+                'CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON group_members(user_instagram_id)',
+
+                // فهارس جدول الرسائل
+                // Messages table indexes
+                'CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_instagram_id)',
+                'CREATE INDEX IF NOT EXISTS idx_messages_group_id ON messages(group_instagram_id)',
+                'CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)',
+                'CREATE INDEX IF NOT EXISTS idx_messages_command ON messages(is_command, command_name)',
+
+                // فهارس جدول سجل الأوامر
+                // Command logs table indexes
+                'CREATE INDEX IF NOT EXISTS idx_command_logs_user_id ON command_logs(user_instagram_id)',
+                'CREATE INDEX IF NOT EXISTS idx_command_logs_command ON command_logs(command_name)',
+                'CREATE INDEX IF NOT EXISTS idx_command_logs_timestamp ON command_logs(timestamp)',
+
+                // فهارس جدول الإعدادات
+                // Settings table indexes
+                'CREATE INDEX IF NOT EXISTS idx_bot_settings_key ON bot_settings(key)',
+                'CREATE INDEX IF NOT EXISTS idx_bot_settings_category ON bot_settings(category)'
+            ];
+
+            for (const indexSql of indexes) {
+                await db.run(indexSql);
+            }
+
+            logger.info('تم إنشاء جميع الفهارس بنجاح - All indexes created successfully');
+
+        } catch (error) {
+            logger.error('خطأ في إنشاء الفهارس - Error creating indexes:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * تشغيل التحديثات
+     * Run migrations
+     */
+    async runMigrations() {
+        try {
+            logger.info('فحص التحديثات المطلوبة - Checking for required migrations...');
+
+            // إنشاء جدول تتبع التحديثات
+            // Create migration tracking table
+            await db.run(`
+                CREATE TABLE IF NOT EXISTS migrations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    version TEXT UNIQUE NOT NULL,
+                    description TEXT,
+                    executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // قائمة التحديثات المتاحة
+            // Available migrations
+            const migrations = [
+                {
+                    version: '1.0.0',
+                    description: 'Initial database setup',
+                    execute: async () => {
+                        // التحديث الأولي تم تنفيذه مسبقاً
+                        // Initial migration already executed
+                        logger.debug('تم تنفيذ التحديث الأولي - Initial migration executed');
+                    }
                 }
-            }
-        }
-        
-        return formattedMessage;
-    }
-    
-    /**
-     * Get level specific styling
-     */
-    getLevelStyling(level) {
-        const styles = {
-            error: { color: `${colors.bright}${colors.bgRed}${colors.white}`, label: '✖ ERROR', icon: '🚨' },
-            warn:  { color: `${colors.bright}${colors.bgYellow}${colors.white}`, label: '⚠ WARN', icon: '⚠️' },
-            info:  { color: `${colors.bright}${colors.bgBlue}${colors.white}`, label: '✓ INFO', icon: 'ℹ️' },
-            debug: { color: `${colors.bright}${colors.bgMagenta}${colors.white}`, label: '⚡ DEBUG', icon: '🔍' },
-            success: { color: `${colors.bright}${colors.bgGreen}${colors.white}`, label: '✅ SUCCESS', icon: '✅' },
-            start: { color: `${colors.bright}${colors.bgCyan}${colors.white}`, label: '🚀 START', icon: '🚀' },
-            complete: { color: `${colors.bright}${colors.bgGreen}${colors.white}`, label: '✨ DONE', icon: '✨' }
-        };
-        
-        return styles[level] || styles.info;
-    }
+            ];
 
-    /**
-     * Write log entry with enhanced formatting
-     */
-    writeLog(level, message, data = null) {
-        // Check log level
-        if (this.logLevels[level] > this.currentLevel) {
-            return;
-        }
+            // تنفيذ التحديثات
+            // Execute migrations
+            for (const migration of migrations) {
+                const existingMigration = await db.get(
+                    'SELECT id FROM migrations WHERE version = ?',
+                    [migration.version]
+                );
 
-        // Format for console (with colors)
-        const consoleMessage = this.formatMessage(level, message, data, true);
-        
-        // Format for file (plain text)
-        const fileMessage = this.formatMessage(level, message, data, false);
-        
-        // Print to console with colors
-        const consoleMethod = level === 'error' ? 'error' : 
-                             level === 'warn' ? 'warn' : 'log';
-        console[consoleMethod](consoleMessage);
-        
-        // Write plain text to file
-        this.writeToFile(fileMessage);
-    }
-
-    /**
-     * كتابة في ملف السجل
-     * Write to log file
-     */
-    writeToFile(message) {
-        try {
-            fs.appendFileSync(this.logFile, message + '\n');
-            
-            // تدوير السجلات عند الحاجة
-            // Rotate logs if needed
-            this.rotateLogs();
-            
-        } catch (error) {
-            console.error('Failed to write to log file:', error);
-        }
-    }
-
-    /**
-     * تدوير ملفات السجل
-     * Rotate log files
-     */
-    rotateLogs() {
-        try {
-            const stats = fs.statSync(this.logFile);
-            const maxSize = 10 * 1024 * 1024; // 10 MB
-            
-            if (stats.size > maxSize) {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const rotatedFile = this.logFile.replace('.log', `_${timestamp}.log`);
-                
-                fs.renameSync(this.logFile, rotatedFile);
-                
-                // Keep only 5 log files
-                this.cleanupOldLogs();
-            }
-            
-        } catch (error) {
-            console.error('Error rotating logs:', error);
-        }
-    }
-
-    /**
-     * تنظيف السجلات القديمة
-     * Cleanup old log files
-     */
-    cleanupOldLogs() {
-        try {
-            const files = fs.readdirSync(this.logDir)
-                .filter(file => file.startsWith('bot_') && file.endsWith('.log'))
-                .map(file => ({
-                    name: file,
-                    path: path.join(this.logDir, file),
-                    mtime: fs.statSync(path.join(this.logDir, file)).mtime
-                }))
-                .sort((a, b) => b.mtime - a.mtime);
-
-            // Delete excess files
-            if (files.length > 5) {
-                for (let i = 5; i < files.length; i++) {
-                    fs.unlinkSync(files[i].path);
+                if (!existingMigration) {
+                    await migration.execute();
+                    await db.run(
+                        'INSERT INTO migrations (version, description) VALUES (?, ?)',
+                        [migration.version, migration.description]
+                    );
+                    logger.info(`تم تنفيذ التحديث - Migration executed: ${migration.version}`);
                 }
             }
 
         } catch (error) {
-            console.error('Error cleaning up old logs:', error);
+            logger.error('خطأ في تشغيل التحديثات - Error running migrations:', error);
+            throw error;
         }
     }
 
     /**
-     * تسجيل خطأ
-     * Log error
+     * إنشاء نسخة احتياطية من قاعدة البيانات
+     * Create database backup
      */
-    error(message, data = null) {
-        this.writeLog('error', message, data);
-    }
-
-    /**
-     * تسجيل تحذير
-     * Log warning
-     */
-    warn(message, data = null) {
-        this.writeLog('warn', message, data);
-    }
-
-    /**
-     * تسجيل معلومات
-     * Log info
-     */
-    info(message, data = null) {
-        this.writeLog('info', message, data);
-    }
-
-    /**
-     * تسجيل تصحيح
-     * Log debug
-     */
-    debug(message, data = null) {
-        this.writeLog('debug', message, data);
-    }
-
-    /**
-     * Log success with special formatting
-     */
-    success(message, data = null) {
-        this.writeLog('success', message, data);
-    }
-
-    /**
-     * Log process start with special formatting
-     */
-    start(message, data = null) {
-        this.writeLog('start', message, data);
-    }
-
-    /**
-     * Log process completion with special formatting
-     */
-    complete(message, data = null) {
-        this.writeLog('complete', message, data);
-    }
-    
-    /**
-     * Log authentication errors
-     */
-    authError(message, data = null) {
-        this.error(`🔐 Authentication Error: ${message}`, data);
-    }
-    
-    /**
-     * Log cookie-related errors
-     */
-    cookieError(message, data = null) {
-        this.error(`🍪 Cookie Error: ${message}`, data);
-    }
-    
-    /**
-     * Log connection errors
-     */
-    connectionError(message, data = null) {
-        this.error(`🌐 Connection Error: ${message}`, data);
-    }
-    
-    /**
-     * Log system critical errors
-     */
-    critical(message, data = null) {
-        const levelInfo = this.getLevelStyling('error');
-        const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
-        const date = new Date().toLocaleDateString('en-US');
-        
-        // Special formatting for critical errors
-        const consoleMessage = `${colors.red}${colors.bright}🚨 CRITICAL ERROR 🚨${colors.reset}\n` +
-            `${colors.gray}${date} ${colors.cyan}${timestamp}${colors.reset} ${colors.gray}│${colors.reset} ` +
-            `${colors.red}${colors.bright}${message}${colors.reset}`;
-            
-        console.error(consoleMessage);
-        
-        if (data) {
-            console.error(`${colors.gray}${''.padStart(28)}│${colors.reset} `, data);
-        }
-        
-        // Also write to file
-        const fileMessage = `[${date} ${timestamp}] [CRITICAL] ${message}`;
-        this.writeToFile(fileMessage + (data ? '\n' + JSON.stringify(data, null, 2) : ''));
-    }
-
-    /**
-     * تعيين مستوى التسجيل
-     * Set log level
-     */
-    setLevel(level) {
-        if (this.logLevels.hasOwnProperty(level)) {
-            this.currentLevel = this.logLevels[level];
-            this.info(`Log level changed to: ${level}`);
-        } else {
-            this.warn(`Invalid log level: ${level}`);
-        }
-    }
-
-    /**
-     * الحصول على مستوى التسجيل الحالي
-     * Get current log level
-     */
-    getLevel() {
-        return Object.keys(this.logLevels).find(key => this.logLevels[key] === this.currentLevel);
-    }
-
-    /**
-     * مسح ملفات السجل
-     * Clear log files
-     */
-    clearLogs() {
+    async createBackup() {
         try {
-            const files = fs.readdirSync(this.logDir).filter(file => file.endsWith('.log'));
-            
-            for (const file of files) {
-                fs.unlinkSync(path.join(this.logDir, file));
-            }
-            
-            this.info('All log files cleared');
-            
+            const backupDir = path.join(__dirname, '../backups');
+            await fs.mkdir(backupDir, { recursive: true });
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const backupPath = path.join(backupDir, `backup_${timestamp}.db`);
+
+            // نسخ ملف قاعدة البيانات
+            // Copy database file
+            const dbPath = path.join(__dirname, '../data/bot.db');
+            await fs.copyFile(dbPath, backupPath);
+
+            logger.info(`تم إنشاء نسخة احتياطية - Backup created: ${backupPath}`);
+            return backupPath;
+
         } catch (error) {
-            this.error('Failed to clear log files:', error);
+            logger.error('خطأ في إنشاء النسخة الاحتياطية - Error creating backup:', error);
+            throw error;
         }
     }
 
     /**
-     * الحصول على إحصائيات السجلات
-     * Get log statistics
+     * تنظيف قاعدة البيانات
+     * Clean up database
      */
-    getStats() {
+    async cleanup() {
         try {
-            const files = fs.readdirSync(this.logDir).filter(file => file.endsWith('.log'));
-            let totalSize = 0;
-            
-            for (const file of files) {
-                const stats = fs.statSync(path.join(this.logDir, file));
-                totalSize += stats.size;
-            }
-            
-            return {
-                fileCount: files.length,
-                totalSize: totalSize,
-                totalSizeMB: (totalSize / (1024 * 1024)).toFixed(2),
-                currentLevel: this.getLevel(),
-                logDirectory: this.logDir
+            logger.info('بدء تنظيف قاعدة البيانات - Starting database cleanup...');
+
+            // حذف الرسائل القديمة (أكثر من شهر)
+            // Delete old messages (older than 1 month)
+            await db.run(`
+                DELETE FROM messages 
+                WHERE timestamp < datetime('now', '-30 days')
+            `);
+
+            // حذف سجلات الأوامر القديمة (أكثر من شهرين)
+            // Delete old command logs (older than 2 months)
+            await db.run(`
+                DELETE FROM command_logs 
+                WHERE timestamp < datetime('now', '-60 days')
+            `);
+
+            // تحديث إحصائيات الجداول
+            // Update table statistics
+            await db.run('VACUUM');
+            await db.run('ANALYZE');
+
+            logger.info('تم تنظيف قاعدة البيانات بنجاح - Database cleanup completed');
+
+        } catch (error) {
+            logger.error('خطأ في تنظيف قاعدة البيانات - Error cleaning database:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * الحصول على إحصائيات قاعدة البيانات
+     * Get database statistics
+     */
+    async getStatistics() {
+        try {
+            const stats = {};
+
+            // إحصائيات المستخدمين
+            // User statistics
+            const userStats = await User.getStatistics();
+            stats.users = userStats;
+
+            // إحصائيات المجموعات
+            // Group statistics
+            const groupStats = await Group.getStatistics();
+            stats.groups = groupStats;
+
+            // إحصائيات الرسائل
+            // Message statistics
+            const messageStats = await db.get(`
+                SELECT 
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN is_command = 1 THEN 1 END) as commands,
+                    COUNT(CASE WHEN timestamp >= datetime('now', '-24 hours') THEN 1 END) as last_24h
+                FROM messages
+            `);
+            stats.messages = messageStats;
+
+            // حجم قاعدة البيانات
+            // Database size
+            const dbPath = path.join(__dirname, '../data/bot.db');
+            const dbStats = await fs.stat(dbPath);
+            stats.database = {
+                sizeBytes: dbStats.size,
+                sizeMB: (dbStats.size / (1024 * 1024)).toFixed(2),
+                lastModified: dbStats.mtime
             };
-            
+
+            return stats;
+
         } catch (error) {
-            this.error('Failed to get log statistics:', error);
-            return null;
+            logger.error('خطأ في جلب إحصائيات قاعدة البيانات - Error getting database statistics:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * التحقق من صحة قاعدة البيانات
+     * Validate database integrity
+     */
+    async validateIntegrity() {
+        try {
+            logger.info('فحص سلامة قاعدة البيانات - Checking database integrity...');
+
+            // فحص سلامة قاعدة البيانات
+            // Check database integrity
+            const integrityCheck = await db.get('PRAGMA integrity_check');
+            
+            if (integrityCheck.integrity_check !== 'ok') {
+                throw new Error(`Database integrity check failed: ${integrityCheck.integrity_check}`);
+            }
+
+            // فحص الجداول المطلوبة
+            // Check required tables
+            const requiredTables = ['users', 'groups', 'group_members', 'messages', 'command_logs', 'bot_settings'];
+            
+            for (const table of requiredTables) {
+                const tableInfo = await db.get(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    [table]
+                );
+                
+                if (!tableInfo) {
+                    throw new Error(`Required table missing: ${table}`);
+                }
+            }
+
+            logger.info('فحص سلامة قاعدة البيانات اكتمل بنجاح - Database integrity check passed');
+            return true;
+
+        } catch (error) {
+            logger.error('فشل في فحص سلامة قاعدة البيانات - Database integrity check failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * إغلاق الاتصال بقاعدة البيانات
+     * Close database connection
+     */
+    async close() {
+        try {
+            await db.close();
+            this.isInitialized = false;
+            logger.info('تم إغلاق الاتصال بقاعدة البيانات - Database connection closed');
+
+        } catch (error) {
+            logger.error('خطأ في إغلاق قاعدة البيانات - Error closing database:', error);
+            throw error;
         }
     }
 }
 
-module.exports = new Logger();
+// إنشاء مثيل واحد من الفئة
+// Create single instance
+const dbInitializer = new DatabaseInitializer();
+
+// تصدير دالة التهيئة
+// Export initialization function
+module.exports = {
+    initDatabase: () => dbInitializer.initialize(),
+    createBackup: () => dbInitializer.createBackup(),
+    cleanup: () => dbInitializer.cleanup(),
+    getStatistics: () => dbInitializer.getStatistics(),
+    validateIntegrity: () => dbInitializer.validateIntegrity(),
+    close: () => dbInitializer.close()
+};
