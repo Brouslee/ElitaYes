@@ -1,10 +1,12 @@
-# Instagram Bot Framework
+# ELITA Instagram Bot Framework
 
 ## Overview
 
-This project is an advanced modular Instagram bot framework built with Node.js, inspired by GoatBot architecture. It provides a comprehensive foundation for creating educational Instagram automation tools with a focus on modularity, multi-language support, and proper database management. The framework includes a dynamic command system, event handling, cookie-based authentication, automatic backup, update system, and SQLite database integration.
+This project is ELITA, an advanced modular Instagram bot framework built with Node.js by Mohammed Al-Akari. It provides a comprehensive foundation for creating educational Instagram automation tools with a focus on modularity, multi-language support, and proper database management. The framework includes a dynamic command system, event handling, cookie-based authentication, automatic backup, update system, and SQLite database integration.
 
 **Important**: This framework is designed for educational purposes only and requires compliance with Instagram's Terms of Service.
+**Developer**: Mohammed Al-Akari
+**Bot Name**: ELITA (Advanced Instagram Framework)
 
 ## User Preferences
 
