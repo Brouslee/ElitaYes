@@ -1,20 +1,22 @@
 {
-  "name": "workspace",
-  "version": "1.0.0",
+  "name": "elita-instagram-bot",
+  "version": "2.0.0",
   "main": "index.js",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["instagram", "bot", "elita", "framework", "educational"],
+  "author": "Mohammed Al-Akari",
   "license": "ISC",
-  "description": "",
+  "description": "ELITA - Advanced Instagram Bot Framework by Mohammed Al-Akari",
   "dependencies": {
     "axios": "^1.11.0",
     "fs-extra": "^11.3.1",
+    "gradient-string": "^3.0.0",
     "node-cron": "^4.2.1",
     "sqlite3": "^5.1.7"
   }
