@@ -1,8 +1,13 @@
+// تحميل النظام العام أولاً
+require('./core/globals');
+
 const Bot = require('./core/bot');
 const config = require('./config/config');
 const logger = require('./core/logger');
 const security = require('./core/security');
 const { initDatabase } = require('./database/init');
+const UptimeServer = require('./core/uptime');
+const configWatcher = require('./utils/configWatcher');
 const { 
     displayStartupBanner, 
     displaySection, 
@@ -23,6 +28,24 @@ class InstagramBotFramework {
     constructor() {
         this.bot = null;
         this.isRunning = false;
+        this.uptimeServer = new UptimeServer();
+        
+        // تهيئة النظام العام
+        this.initializeGlobalSystem();
+    }
+
+    initializeGlobalSystem() {
+        // تحديث معلومات ELITA
+        global.ELITA.config = config;
+        global.ELITA.isRunning = false;
+        
+        // تهيئة الأدوات المساعدة
+        global.utils.initialize();
+        
+        // بدء مراقبة ملفات الإعدادات
+        configWatcher.initializeWatching();
+        
+        logger.info('SYSTEM', 'تم تهيئة النظام العام بنجاح');
     }
 
     async start() {
@@ -47,12 +70,18 @@ class InstagramBotFramework {
             await initDatabase();
             displaySuccess('Database initialized successfully');
 
+            // Start uptime server
+            displayLoading('Starting uptime server');
+            await this.uptimeServer.start();
+            displaySuccess('Uptime server started successfully');
+
             // Create and start bot
             displayLoading('Creating bot instance');
             this.bot = new Bot(config);
             await this.bot.initialize();
             
             this.isRunning = true;
+            global.ELITA.isRunning = true;
             displaySuccess('ELITA Bot started successfully!');
             
             // معالجة إغلاق التطبيق بشكل آمن
@@ -71,11 +100,22 @@ class InstagramBotFramework {
             logger.info(`تم استلام إشارة ${signal} - إغلاق البوت...`);
             logger.info(`Received ${signal} signal - Shutting down bot...`);
             
+            this.isRunning = false;
+            global.ELITA.isRunning = false;
+            
+            // إيقاف خادم Uptime
+            if (this.uptimeServer) {
+                await this.uptimeServer.stop();
+            }
+            
+            // إيقاف البوت
             if (this.bot) {
                 await this.bot.shutdown();
             }
             
-            this.isRunning = false;
+            // إيقاف مراقبة الملفات
+            configWatcher.stopAll();
+            
             process.exit(0);
         };
 
