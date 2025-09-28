@@ -7,12 +7,12 @@ module.exports = {
     // إعدادات البوت الأساسية
     // Basic bot settings
     bot: {
-        name: 'Elita 「🫩」',
+        name: 'ELITA 「⚡」',
         version: '2.0.0',
         prefix: '', // بادئة الأوامر - Command prefix
         timeout: 30000, // مهلة زمنية بالميلي ثانية - Timeout in milliseconds
-        author: 'Instagram Bot Framework',
-        authorEmail: 'instagrambot@example.com'
+        author: 'Mohammed Al-Akari',
+        authorEmail: 'mohammed.alakari@example.com'
     },
 
     // إعدادات قاعدة البيانات
