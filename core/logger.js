@@ -29,8 +29,10 @@ const colors = {
 };
 
 /**
- * Advanced Logging System with Colors and Better Formatting
+ * ELITA Advanced Logging System with Colors and Better Formatting
  * Enhanced console output with beautiful formatting
+ * 
+ * Created by Mohammed Al-Akari for ELITA Instagram Bot Framework
  */
 
 class Logger {
