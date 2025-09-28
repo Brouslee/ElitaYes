@@ -3,8 +3,10 @@ const path = require('path');
 const logger = require('./logger');
 
 /**
- * نظام المصادقة باستخدام الكوكيز
- * Cookie-based Authentication System
+ * نظام المصادقة لبوت ELITA باستخدام الكوكيز
+ * ELITA Cookie-based Authentication System
+ * 
+ * تم إنشاؤه بواسطة محمد العكاري - Created by Mohammed Al-Akari
  */
 
 class InstagramAuth {
