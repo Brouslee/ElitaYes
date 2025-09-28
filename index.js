@@ -3,10 +3,19 @@ const config = require('./config/config');
 const logger = require('./core/logger');
 const security = require('./core/security');
 const { initDatabase } = require('./database/init');
+const { 
+    displayStartupBanner, 
+    displaySection, 
+    displayBotInfo, 
+    displayLoading, 
+    displaySuccess, 
+    displayError,
+    displayWarning 
+} = require('./utils/consoleDisplay');
 
 /**
- * Instagram Bot Framework - Main Entry Point
- * تحذير: هذا البوت للأغراض التعليمية فقط. تأكد من الامتثال لشروط خدمة Instagram
+ * ELITA Instagram Bot Framework - Main Entry Point
+ * Created by Mohammed Al-Akari
  * Warning: This bot is for educational purposes only. Ensure compliance with Instagram's Terms of Service
  */
 
@@ -18,32 +27,41 @@ class InstagramBotFramework {
 
     async start() {
         try {
-            // تم إلغاء التحقق من الأمان والIP
+            // Display beautiful startup banner
+            displayStartupBanner();
+            
+            // Display bot information
+            displayBotInfo({
+                name: config.bot.name,
+                version: config.bot.version,
+                author: config.bot.author
+            });
+
+            displayLoading('Initializing ELITA Bot Framework');
+            
             // Security and IP validation disabled
-            logger.info('تم تشغيل البوت بدون قيود IP - Bot running without IP restrictions');
+            displayWarning('IP restrictions disabled - Bot running in open mode');
 
-            logger.info('بدء تشغيل Instagram Bot Framework...');
-            logger.info('Starting Instagram Bot Framework...');
-
-            // تهيئة قاعدة البيانات
             // Initialize database
+            displayLoading('Setting up database');
             await initDatabase();
-            logger.info('تم تهيئة قاعدة البيانات بنجاح - Database initialized successfully');
+            displaySuccess('Database initialized successfully');
 
-            // إنشاء وتشغيل البوت
             // Create and start bot
+            displayLoading('Creating bot instance');
             this.bot = new Bot(config);
             await this.bot.initialize();
             
             this.isRunning = true;
-            logger.info('تم تشغيل البوت بنجاح! - Bot started successfully!');
+            displaySuccess('ELITA Bot started successfully!');
             
             // معالجة إغلاق التطبيق بشكل آمن
             // Handle graceful shutdown
             this.setupShutdownHandlers();
             
         } catch (error) {
-            logger.error('خطأ في تشغيل البوت - Error starting bot:', error);
+            displayError('Failed to start ELITA Bot: ' + error.message);
+            logger.error('Error starting bot:', error);
             process.exit(1);
         }
     }
