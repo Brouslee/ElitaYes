@@ -1,6 +1,6 @@
 # ELITA - Instagram Bot Framework
 
-![شعار ELITA](https://imgur.com/a/ZTXdFuP)
+![شعار ELITA](https://ibb.co/jknRDttG)
 
 Node.js Support v20.x | إطار عمل ELITA المتقدم لبوتات Instagram | تم التطوير بواسطة محمد العكاري
 
