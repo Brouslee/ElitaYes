@@ -3,8 +3,10 @@ const path = require('path');
 const logger = require('../core/logger');
 
 /**
- * معالج الأوامر
- * Command Handler
+ * معالج أوامر بوت ELITA
+ * ELITA Command Handler
+ * 
+ * تم إنشاؤه بواسطة محمد العكاري - Created by Mohammed Al-Akari
  */
 
 class CommandHandler {
