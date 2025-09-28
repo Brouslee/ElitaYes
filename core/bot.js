@@ -8,8 +8,10 @@ const EventHandler = require('../handlers/eventHandler');
 const { languageManager, getText } = require('../utils/language');
 
 /**
- * نواة البوت الرئيسية
- * Main Bot Core Class
+ * نواة بوت ELITA الرئيسية
+ * ELITA Main Bot Core Class
+ * 
+ * تم إنشاؤه بواسطة محمد العكاري - Created by Mohammed Al-Akari
  */
 
 class InstagramBot extends EventEmitter {
