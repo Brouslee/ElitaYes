@@ -337,49 +337,257 @@ class InstagramIntegration {
     }
 
     /**
-     * إرسال رسالة مباشرة
-     * Send direct message
+     * إرسال رسالة مباشرة محدثة مع دعم الميزات الجديدة
+     * Enhanced direct message sending with new features
      * @param {string} userId - معرف المستخدم
      * @param {string} message - نص الرسالة
+     * @param {Object} options - خيارات إضافية
      * @returns {Object} - نتيجة الإرسال
      */
-    async sendDirectMessage(userId, message) {
+    async sendDirectMessage(userId, message, options = {}) {
         try {
             logger.info(`إرسال رسالة مباشرة - Sending direct message to: ${userId}`);
 
+            const {
+                media = null,
+                replyToMessageId = null,
+                mentionUsers = [],
+                buttons = null,
+                threadId = null,
+                enableReactions = true
+            } = options;
+
             // التحقق من صحة المدخلات - Validate inputs
-            if (!userId || !message) {
-                throw new Error('معرف المستخدم والرسالة مطلوبان - User ID and message are required');
+            if (!userId || (!message && !media)) {
+                throw new Error('معرف المستخدم والرسالة أو الوسائط مطلوبان - User ID and message or media are required');
             }
 
-            if (message.length > 1000) {
+            if (message && message.length > 1000) {
                 throw new Error('الرسالة طويلة جداً - Message too long');
             }
 
-            const data = {
+            let data = {
                 recipient_users: `[${userId}]`,
-                text: message,
-                thread_ids: '[]',
+                thread_ids: threadId ? `[${threadId}]` : '[]',
                 action: 'send_item'
             };
+
+            // إضافة النص إذا وجد
+            if (message) {
+                data.text = message;
+            }
+
+            // إضافة الوسائط إذا وجدت
+            if (media) {
+                await this.addMediaToMessage(data, media);
+            }
+
+            // إضافة معلومات الرد إذا وجدت
+            if (replyToMessageId) {
+                data.replied_to_item_id = replyToMessageId;
+            }
+
+            // إضافة الإشارات إذا وجدت
+            if (mentionUsers.length > 0) {
+                data.mentioned_users = JSON.stringify(mentionUsers);
+            }
 
             const response = await this.makeRequest('/direct_v2/threads/broadcast/text/', 'POST', data);
             
             if (response.status === 'ok') {
                 logger.info(`تم إرسال الرسالة بنجاح - Message sent successfully to: ${userId}`);
                 
-                return {
+                const result = {
                     success: true,
                     messageId: response.item_id || Date.now().toString(),
                     timestamp: new Date(),
-                    threadId: response.thread_id
+                    threadId: response.thread_id || threadId,
+                    hasMedia: !!media,
+                    isReply: !!replyToMessageId,
+                    enableReactions
                 };
+
+                // إضافة الأزرار إذا وجدت
+                if (buttons) {
+                    result.buttons = buttons;
+                    result.hasButtons = true;
+                }
+
+                return result;
             }
 
             throw new Error('فشل في إرسال الرسالة - Failed to send message');
 
         } catch (error) {
             logger.error(`فشل في إرسال الرسالة - Failed to send message to ${userId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * إضافة وسائط للرسالة
+     * Add media to message
+     * @param {Object} data - بيانات الرسالة
+     * @param {Object} media - الوسائط
+     */
+    async addMediaToMessage(data, media) {
+        switch (media.type) {
+            case 'image':
+                data.media_type = 'photo';
+                if (media.url) {
+                    data.photo_url = media.url;
+                } else if (media.filePath) {
+                    data.upload_id = Date.now().toString();
+                }
+                break;
+
+            case 'video':
+                data.media_type = 'video';
+                if (media.url) {
+                    data.video_url = media.url;
+                } else if (media.filePath) {
+                    data.upload_id = Date.now().toString();
+                }
+                break;
+
+            case 'audio':
+                data.media_type = 'voice';
+                if (media.filePath) {
+                    data.upload_id = Date.now().toString();
+                }
+                break;
+
+            case 'document':
+                data.media_type = 'document';
+                if (media.filePath) {
+                    data.upload_id = Date.now().toString();
+                    data.file_name = media.fileName;
+                }
+                break;
+        }
+    }
+
+    /**
+     * إرسال صورة
+     * Send image
+     * @param {string} userId - معرف المستخدم
+     * @param {Object} image - بيانات الصورة
+     * @param {string} caption - التعليق
+     * @returns {Object} - نتيجة الإرسال
+     */
+    async sendImage(userId, image, caption = '') {
+        return await this.sendDirectMessage(userId, caption, {
+            media: { type: 'image', ...image }
+        });
+    }
+
+    /**
+     * إرسال فيديو
+     * Send video
+     * @param {string} userId - معرف المستخدم
+     * @param {Object} video - بيانات الفيديو
+     * @param {string} caption - التعليق
+     * @returns {Object} - نتيجة الإرسال
+     */
+    async sendVideo(userId, video, caption = '') {
+        return await this.sendDirectMessage(userId, caption, {
+            media: { type: 'video', ...video }
+        });
+    }
+
+    /**
+     * إرسال صوت
+     * Send audio
+     * @param {string} userId - معرف المستخدم
+     * @param {Object} audio - بيانات الصوت
+     * @returns {Object} - نتيجة الإرسال
+     */
+    async sendAudio(userId, audio) {
+        return await this.sendDirectMessage(userId, '', {
+            media: { type: 'audio', ...audio }
+        });
+    }
+
+    /**
+     * إرسال مستند
+     * Send document
+     * @param {string} userId - معرف المستخدم
+     * @param {Object} document - بيانات المستند
+     * @returns {Object} - نتيجة الإرسال
+     */
+    async sendDocument(userId, document) {
+        return await this.sendDirectMessage(userId, '', {
+            media: { type: 'document', ...document }
+        });
+    }
+
+    /**
+     * إضافة تفاعل على رسالة
+     * Add reaction to message
+     * @param {string} messageId - معرف الرسالة
+     * @param {string} reactionType - نوع التفاعل
+     * @returns {Object} - نتيجة التفاعل
+     */
+    async addMessageReaction(messageId, reactionType) {
+        try {
+            logger.info(`إضافة تفاعل - Adding reaction: ${reactionType} to ${messageId}`);
+
+            const data = {
+                item_id: messageId,
+                reaction_type: reactionType,
+                action: 'send_item'
+            };
+
+            const response = await this.makeRequest('/direct_v2/threads/broadcast/reaction/', 'POST', data);
+            
+            if (response.status === 'ok') {
+                logger.info(`تم إضافة التفاعل بنجاح - Reaction added successfully: ${reactionType}`);
+                return {
+                    success: true,
+                    reactionType,
+                    messageId,
+                    timestamp: new Date()
+                };
+            }
+
+            throw new Error('فشل في إضافة التفاعل - Failed to add reaction');
+
+        } catch (error) {
+            logger.error(`فشل في إضافة التفاعل - Failed to add reaction:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * إزالة تفاعل من رسالة
+     * Remove reaction from message
+     * @param {string} messageId - معرف الرسالة
+     * @returns {Object} - نتيجة الإزالة
+     */
+    async removeMessageReaction(messageId) {
+        try {
+            logger.info(`إزالة تفاعل - Removing reaction from: ${messageId}`);
+
+            const data = {
+                item_id: messageId,
+                action: 'send_item'
+            };
+
+            const response = await this.makeRequest('/direct_v2/threads/broadcast/reaction/', 'DELETE', data);
+            
+            if (response.status === 'ok') {
+                logger.info('تم إزالة التفاعل بنجاح - Reaction removed successfully');
+                return {
+                    success: true,
+                    messageId,
+                    timestamp: new Date()
+                };
+            }
+
+            throw new Error('فشل في إزالة التفاعل - Failed to remove reaction');
+
+        } catch (error) {
+            logger.error('فشل في إزالة التفاعل - Failed to remove reaction:', error);
             throw error;
         }
     }
